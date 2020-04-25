@@ -1,7 +1,7 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetTcpFramework", "DotNetTcpFramework.csproj", "{62D9BDFA-AB8A-43E5-A20B-BB1680B3643E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetGameFramework", "DotNetGameFramework.csproj", "{62D9BDFA-AB8A-43E5-A20B-BB1680B3643E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
