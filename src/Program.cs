@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     class Program
     {

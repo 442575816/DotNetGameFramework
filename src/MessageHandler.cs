@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     public class MessageHandler : ChannelInboundHandlerAdapter
     {

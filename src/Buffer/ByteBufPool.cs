@@ -2,7 +2,7 @@
 using System.Collections.Concurrent;
 using System.Threading;
 
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     public class ByteBufPool<T>
     {

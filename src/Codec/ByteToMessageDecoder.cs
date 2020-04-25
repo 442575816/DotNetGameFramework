@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     public abstract class ByteToMessageDecoder : ChannelInboundHandlerAdapter
     {

@@ -16,5 +16,6 @@
     <Folder Include="src\Buffer\" />
     <Folder Include="src\Channel\" />
     <Folder Include="src\Codec\" />
+    <Folder Include="src\Http\" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     /// <summary>
     /// Socket参数

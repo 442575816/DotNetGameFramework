@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     public static class ByteUtil
     {

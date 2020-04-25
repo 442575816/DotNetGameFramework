@@ -1,5 +1,5 @@
 ﻿using System;
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     public class RequestMessage
     {

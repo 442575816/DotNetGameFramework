@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     public class MessageDecoder : ByteToMessageDecoder
     {

@@ -1,5 +1,5 @@
 ﻿using System;
-namespace DotNetTcpFramework
+namespace DotNetGameFramework
 {
     /// <summary>
     /// Channel输出处理器
