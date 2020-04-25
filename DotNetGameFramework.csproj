@@ -11,4 +11,10 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="src\" />
+    <Folder Include="src\Buffer\" />
+    <Folder Include="src\Channel\" />
+    <Folder Include="src\Codec\" />
+  </ItemGroup>
 </Project>

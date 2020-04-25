@@ -45,7 +45,7 @@ namespace DotNetTcpFramework
         /// <summary>
         /// 接受buffpool
         /// </summary>
-        private ObjectPool<ByteBuf> buffPool;
+        private ByteBufPool<ByteBuf> buffPool;
 
         /// <summary>
         /// 发送队列
@@ -72,7 +72,7 @@ namespace DotNetTcpFramework
             Id = Guid.NewGuid().ToString();
             SocketServer = socketServer;
             ChannelPipeline = new DefaultChannelPipeline(this);
-            buffPool = new ObjectPool<ByteBuf>(() =>
+            buffPool = new ByteBufPool<ByteBuf>(() =>
             {
                 return new ByteBuf(256);
             }, 10, 20);
@@ -184,7 +184,7 @@ namespace DotNetTcpFramework
 
         private void OnAsyncCompleted(object sender, SocketAsyncEventArgs e)
         {
-            switch(e.LastOperation)
+            switch (e.LastOperation)
             {
                 case SocketAsyncOperation.Receive:
                     if (OnReceive(e))
@@ -287,7 +287,7 @@ namespace DotNetTcpFramework
                 Disconnect();
                 return false;
             }
-            
+
 
         }
 

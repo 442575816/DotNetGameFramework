@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace DotNetTcpFramework
 {
-    public class ObjectPool<T>
+    public class ByteBufPool<T>
     {
         /// <summary>
         /// 对象工厂类
@@ -22,7 +22,7 @@ namespace DotNetTcpFramework
         [ThreadStatic]
         private int count;
 
-        public ObjectPool(Func<T> func, int minSize, int maxSize)
+        public ByteBufPool(Func<T> func, int minSize, int maxSize)
         {
             this.func = func;
             this.minSize = minSize;
