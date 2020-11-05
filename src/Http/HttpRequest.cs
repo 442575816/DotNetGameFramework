@@ -56,7 +56,9 @@ namespace DotNetGameFramework.Http
             try
             {
                 buff.WriteBytes(data);
-                for (int i = headIndex; i < )
+                for (int i = headIndex; i < headIndex;)
+                {
+                }
 
             }
             finally

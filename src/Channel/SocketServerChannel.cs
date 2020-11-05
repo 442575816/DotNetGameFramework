@@ -40,7 +40,7 @@ namespace DotNetGameFramework
         /// <summary>
         /// 发送请求
         /// </summary>
-        private SocketAsyncEventArgs sendEventArgs;
+        //private SocketAsyncEventArgs sendEventArgs;
 
         /// <summary>
         /// 接受buffpool
@@ -89,8 +89,8 @@ namespace DotNetGameFramework
             receiveEventArgs = new SocketAsyncEventArgs();
             receiveEventArgs.Completed += OnAsyncCompleted;
 
-            sendEventArgs = new SocketAsyncEventArgs();
-            sendEventArgs.Completed += OnAsyncCompleted;
+            //sendEventArgs = new SocketAsyncEventArgs();
+            //sendEventArgs.Completed += OnAsyncCompleted;
             IsConnected = true;
 
             ChannelPipeline.FireChannelActive();
@@ -153,10 +153,10 @@ namespace DotNetGameFramework
         /// </summary>
         private void TrySend()
         {
-            if (isSending)
-            {
-                return;
-            }
+            //if (isSending)
+            //{
+            //    return;
+            //}
 
             if (!IsConnected)
             {
@@ -171,7 +171,9 @@ namespace DotNetGameFramework
 
             if (sendQueue.TryDequeue(out ByteBuf buff))
             {
-                isSending = true;
+                //isSending = true;
+                SocketAsyncEventArgs sendEventArgs = new SocketAsyncEventArgs();
+                sendEventArgs.Completed += OnAsyncCompleted;
                 sendEventArgs.SetBuffer(buff.Data, buff.ReaderIndex, buff.ReadableBytes);
                 sendEventArgs.UserToken = buff;
                 if (!Socket.SendAsync(sendEventArgs))
@@ -268,9 +270,9 @@ namespace DotNetGameFramework
                 {
                     // 未传输完毕
                     e.SetBuffer(data, e.Offset + e.BytesTransferred, e.Count - e.BytesTransferred);
-                    if (!Socket.SendAsync(sendEventArgs))
+                    if (!Socket.SendAsync(e))
                     {
-                        return OnSend(sendEventArgs);
+                        return OnSend(e);
                     }
                     return false;
                 }
@@ -303,7 +305,7 @@ namespace DotNetGameFramework
 
             // Reset EventArgs
             receiveEventArgs.Completed -= OnAsyncCompleted;
-            sendEventArgs.Completed -= OnAsyncCompleted;
+            //sendEventArgs.Completed -= OnAsyncCompleted;
 
             try
             {
