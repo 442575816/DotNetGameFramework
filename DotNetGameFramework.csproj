@@ -18,4 +18,7 @@
     <Folder Include="src\Codec\" />
     <Folder Include="src\Http\" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="4.7.3" />
+  </ItemGroup>
 </Project>

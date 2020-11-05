@@ -19,7 +19,6 @@ namespace DotNetGameFramework
 
         private int minSize;
         private int maxSize;
-        [ThreadStatic]
         private int count;
 
         public ByteBufPool(Func<T> func, int minSize, int maxSize)
