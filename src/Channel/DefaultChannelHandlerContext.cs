@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 
 namespace DotNetGameFramework
 {
@@ -9,11 +8,6 @@ namespace DotNetGameFramework
         /// 当前Name
         /// </summary>
         public string Name { get; private set; }
-
-        /// <summary>
-        /// 是否异步化
-        /// </summary>
-        public bool Async { get; set; } = false;
 
         /// <summary>
         /// ChannelHandler
@@ -46,25 +40,11 @@ namespace DotNetGameFramework
         /// <param name="pipeline"></param>
         /// <param name="name"></param>
         /// <param name="handler"></param>
-        public DefaultChannelHandlerContext(ChannelPipeline pipeline, string name, ChannelHandler handler)
+        public DefaultChannelHandlerContext(ChannelPipeline pipeline, String name, ChannelHandler handler)
         {
             ChannelPipeline = pipeline;
             Name = name;
             ChannelHandler = handler;
-        }
-
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="pipeline"></param>
-        /// <param name="name"></param>
-        /// <param name="handler"></param>
-        public DefaultChannelHandlerContext(ChannelPipeline pipeline, string name, ChannelHandler handler, bool async)
-        {
-            ChannelPipeline = pipeline;
-            Name = name;
-            ChannelHandler = handler;
-            Async = async;
         }
 
         public void FireChannelRegistered()
