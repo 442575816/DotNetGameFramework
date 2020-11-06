@@ -1,10 +1,15 @@
 ﻿using System;
-namespace DotNetGameFramework.src.Buffer
+
+namespace DotNetGameFramework
 {
-    public class ByteBufHelper
+    public static class ByteBufHelper
     {
-        public ByteBufHelper()
+        /// <summary>
+        /// 默认池子
+        /// </summary>
+        public static ByteBufPool<ByteBuf> DefaultByteBufPool = new ByteBufPool<ByteBuf>(() =>
         {
-        }
+            return new ByteBuf(256);
+        }, 10, 100);
     }
 }

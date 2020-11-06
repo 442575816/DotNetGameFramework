@@ -2,7 +2,7 @@
 
 namespace DotNetGameFramework
 {
-    public class ByteBuf
+    public class ByteBuf : Referenceable
     {
         /// <summary>
         /// 数据
@@ -29,15 +29,6 @@ namespace DotNetGameFramework
         /// </summary>
         public int MaxCapacity { get; set; }
 
-        /// <summary>
-        /// 引用次数计数器
-        /// </summary>
-        public int ReferenceCount { get; private set; }
-
-        /// <summary>
-        /// deallocate
-        /// </summary>
-        public Action<ByteBuf> Deallocate;
 
         /// <summary>
         /// 构造函数
@@ -408,22 +399,12 @@ namespace DotNetGameFramework
         }
 
         /// <summary>
-        /// 引用+1
+        /// 回收重新利用
         /// </summary>
-        public void Retain()
+        public override void Recycle()
         {
-            ReferenceCount++;
-        }
-
-        public void Release()
-        {
-            ReferenceCount--;
-            if (ReferenceCount == 0)
-            {
-                ReaderIndex = 0;
-                WriterIndex = 0;
-                Deallocate?.Invoke(this);
-            }
+            ReaderIndex = 0;
+            WriterIndex = 0;
         }
 
         /// <summary>
@@ -505,8 +486,6 @@ namespace DotNetGameFramework
 
             return Math.Min(newCapacity, MaxCapacity);
         }
-
-
     }
 }
 

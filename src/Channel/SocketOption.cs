@@ -16,5 +16,15 @@ namespace DotNetGameFramework
         /// 重用端口
         /// </summary>
         public bool ReusePort { get; set; } = true;
+
+        /// <summary>
+        /// 等待连接队列的长度
+        /// </summary>
+        public int Backlog { get; set; } = 1000;
+
+        /// <summary>
+        /// 默认ByteBufPool
+        /// </summary>
+        public ByteBufPool<ByteBuf> ByteBufPool { get; set; } = ByteBufHelper.DefaultByteBufPool;
     }
 }

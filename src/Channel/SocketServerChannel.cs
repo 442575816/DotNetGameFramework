@@ -67,25 +67,20 @@ namespace DotNetGameFramework
         /// 构造函数
         /// </summary>
         /// <param name="socketServer"></param>
-        public SocketServerChannel(SocketServer socketServer)
+        public SocketServerChannel(SocketServer socketServer, Socket socket, ByteBufPool<ByteBuf> byteBufPool)
         {
             Id = Guid.NewGuid().ToString();
             SocketServer = socketServer;
+            Socket = socket;
             ChannelPipeline = new DefaultChannelPipeline(this);
-            buffPool = new ByteBufPool<ByteBuf>(() =>
-            {
-                return new ByteBuf(256);
-            }, 10, 20);
+            buffPool = byteBufPool;
         }
 
         /// <summary>
-        /// 新的连接
+        /// 开始
         /// </summary>
-        /// <param name="socket"></param>
-        public void Connect(Socket socket)
+        public void Start()
         {
-            Socket = socket;
-
             receiveEventArgs = new SocketAsyncEventArgs();
             receiveEventArgs.Completed += OnAsyncCompleted;
 
@@ -136,7 +131,6 @@ namespace DotNetGameFramework
 
             isReceiving = true;
             ByteBuf buff = buffPool.Allocate();
-            buff.Deallocate = buffPool.Free;
             receiveEventArgs.SetBuffer(buff.Data, buff.WriterIndex, buff.WritableBytes);
             receiveEventArgs.UserToken = buff;
             if (!Socket.ReceiveAsync(receiveEventArgs))
@@ -167,7 +161,6 @@ namespace DotNetGameFramework
             {
                 return;
             }
-
 
             if (sendQueue.TryDequeue(out ByteBuf buff))
             {
@@ -260,6 +253,7 @@ namespace DotNetGameFramework
         {
             if (!IsConnected)
             {
+                (e.UserToken as ByteBuf)?.Release();
                 return false;
             }
 
@@ -278,12 +272,14 @@ namespace DotNetGameFramework
                 }
                 else
                 {
+                    (e.UserToken as ByteBuf)?.Release();
                     isSending = false;
                     return true;
                 }
             }
             else
             {
+                (e.UserToken as ByteBuf)?.Release();
                 isSending = false;
                 ChannelPipeline.FireExceptionCaught(new Exception(e.SocketError.ToString()));
                 Disconnect();

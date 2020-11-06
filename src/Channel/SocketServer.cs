@@ -35,7 +35,7 @@ namespace DotNetGameFramework
         /// <summary>
         /// 默认Options
         /// </summary>
-        public SocketOption Options { get; set; } = new SocketOption();
+        public SocketOption SocketOption { get; set; } = new SocketOption();
 
         /// <summary>
         /// 是否开始接受请求
@@ -53,15 +53,21 @@ namespace DotNetGameFramework
         protected SocketAsyncEventArgs acceptorEventArgs = null;
 
         /// <summary>
+        /// ByteBufPool
+        /// </summary>
+        protected ByteBufPool<ByteBuf> ByteBufPool { get; private set; }
+
+        /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="host"></param>
         /// <param name="port"></param>
-        public SocketServer(string host, string port)
+        public SocketServer(string host, string port, SocketOption option)
         {
             this.host = host;
             this.port = port;
-
+            this.SocketOption = option;
+            ByteBufPool  = option.ByteBufPool;
         }
 
         /// <summary>
@@ -81,10 +87,10 @@ namespace DotNetGameFramework
             // 启动Socket
             IPEndPoint.TryParse($"{host}:{port}", out IPEndPoint endpoint);
             serverSocket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, Options.ReusePort);
-            serverSocket.NoDelay = Options.NoDelay;
+            serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, SocketOption.ReusePort);
+            serverSocket.NoDelay = SocketOption.NoDelay;
             serverSocket.Bind(endpoint);
-            serverSocket.Listen(1000);
+            serverSocket.Listen(SocketOption.Backlog);
 
             IsStarted = true;
             IsAccepting = true;
@@ -181,10 +187,10 @@ namespace DotNetGameFramework
         /// <param name="socket"></param>
         protected void ChannelConnected(Socket socket)
         {
-            var channel = new SocketServerChannel(this);
+            var channel = new SocketServerChannel(this, socket, ByteBufPool);
             ServerHandler?.InitChannel(channel);
 
-            channel.Connect(socket);
+            channel.Start();
             RegisteredChannel(channel);
 
             channel.ChannelPipeline.FireChannelRegistered();

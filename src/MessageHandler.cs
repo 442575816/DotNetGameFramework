@@ -8,8 +8,8 @@ namespace DotNetGameFramework
     {
         public override void FireChannelRead(ChannelHandlerContext context, object msg)
         {
-            Task.Run(() =>
-            {
+            //Task.Run(() =>
+            //{
                 RequestMessage message = msg as RequestMessage;
                 string response = $"hello world 111";
                 byte[] bodyBytes = Encoding.UTF8.GetBytes(response);
@@ -17,7 +17,7 @@ namespace DotNetGameFramework
                 byte[] array = new byte[32];
                 Array.Copy(commandBytes, array, commandBytes.Length);
 
-                ByteBuf buff = new ByteBuf();
+                ByteBuf buff = ByteBufHelper.DefaultByteBufPool.Allocate();
                 buff.Retain();
                 buff.WriteInt(36 + bodyBytes.Length);
                 buff.WriteBytes(array);
@@ -26,7 +26,7 @@ namespace DotNetGameFramework
 
                 context.Write(buff);
                 return;
-        });
+        //});
             
         }
     }

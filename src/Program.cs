@@ -13,7 +13,7 @@ namespace DotNetGameFramework
     {
         static void Main(string[] args)
         {
-            SocketServer server = new SocketServer("127.0.0.1", "8088");
+            SocketServer server = new SocketServer("127.0.0.1", "8088", new SocketOption());
             server.ServerHandler = new MyServerHandler();
             server.Start();
             //Console.WriteLine("Start");
