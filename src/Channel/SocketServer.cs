@@ -53,7 +53,7 @@ namespace DotNetGameFramework
         /// <summary>
         /// Socket参数
         /// </summary>
-        private readonly SocketOption options;
+        public SocketOption SocketOptions { get; }
 
         /// <summary>
         /// 线程池相关
@@ -61,11 +61,6 @@ namespace DotNetGameFramework
         private readonly int _numSchedulers;
         private readonly PipeScheduler[] _schedulers;
         private int _schedulerIndex;
-
-        /// <summary>
-        /// BufPool
-        /// </summary>
-        private ByteBufPool<ByteBuf> ByteBufPool { get; set; }
 
         /// <summary>
         /// 构造函数
@@ -76,9 +71,9 @@ namespace DotNetGameFramework
         {
             this.host = host;
             this.port = port;
-            this.options = socketOption;
+            SocketOptions = socketOption;
 
-            var ioQueueCount = options.IOQueueCount;
+            var ioQueueCount = SocketOptions.IOQueueCount;
             if (ioQueueCount > 0)
             {
                 _numSchedulers = ioQueueCount;
@@ -95,11 +90,6 @@ namespace DotNetGameFramework
                 _numSchedulers = directScheduler.Length;
                 _schedulers = directScheduler;
             }
-
-            ByteBufPool = new ByteBufPool<ByteBuf>(() =>
-            {
-                return new ByteBuf(options.DefaultByteBufSize);
-            }, options.MinByteBufPoolSize, options.MaxByteBufPoolSize);
         }
 
         /// <summary>
@@ -115,16 +105,17 @@ namespace DotNetGameFramework
             // 启动Socket
             IPEndPoint.TryParse($"{host}:{port}", out IPEndPoint endpoint);
             serverSocket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, options.ReusePort);
-            serverSocket.NoDelay = options.NoDelay;
+            serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, SocketOptions.ReusePort);
+            serverSocket.NoDelay = SocketOptions.NoDelay;
             serverSocket.Bind(endpoint);
-            serverSocket.Listen(options.Backlog);
+            serverSocket.Listen(SocketOptions.Backlog);
 
             IsStarted = true;
         }
 
         public void AcceptAsync()
         {
+            //Console.WriteLine("Main thread: {0}", Thread.CurrentThread.ManagedThreadId);
             AcceptInternalAsync();
         }
 
@@ -134,19 +125,23 @@ namespace DotNetGameFramework
             {
                 try
                 {
+                    //Console.WriteLine("Accept thread1: {0}", Thread.CurrentThread.ManagedThreadId);
                     var acceptSocket = await serverSocket.AcceptAsync();
-
+                    //Console.WriteLine("Accept thread2: {0}", Thread.CurrentThread.ManagedThreadId);
                     // Only apply no delay to Tcp based endpoints
                     if (acceptSocket.LocalEndPoint is IPEndPoint)
                     {
-                        acceptSocket.NoDelay = options.NoDelay;
+                        acceptSocket.NoDelay = SocketOptions.NoDelay;
                     }
 
-                    var connection = new SocketServerChannel(acceptSocket, this, ByteBufPool,
-                                                                  _schedulers[_schedulerIndex],
-                                                                  options.WaitForDataBeforeAllocatingBuffer);
+                    var connection = new SocketServerChannel(acceptSocket, this, SocketOptions.MemoryPool,
+                                                             _schedulers[_schedulerIndex],
+                                                             SocketOptions.WaitForDataBeforeAllocatingBuffer);
+
+                    //Console.WriteLine("Accept thread3: {0}", Thread.CurrentThread.ManagedThreadId);
                     ChannelConnected(connection);
                     connection.Start();
+                    //Console.WriteLine("Accept thread4: {0}", Thread.CurrentThread.ManagedThreadId);
 
                     _schedulerIndex = (_schedulerIndex + 1) % _numSchedulers;
                 }

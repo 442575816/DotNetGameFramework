@@ -8,8 +8,8 @@ namespace DotNetGameFramework
     {
         public override void FireChannelRead(ChannelHandlerContext context, object msg)
         {
-            Task.Run(() =>
-            {
+            //Task.Run(() =>
+            //{
                 RequestMessage message = msg as RequestMessage;
                 string response = $"hello world 111";
                 byte[] bodyBytes = Encoding.UTF8.GetBytes(response);
@@ -26,7 +26,7 @@ namespace DotNetGameFramework
 
                 context.Write(buff);
                 return;
-        });
+        //});
             
         }
     }

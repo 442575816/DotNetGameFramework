@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO.Pipelines;
+using System.Threading.Tasks;
 
 namespace DotNetGameFramework
 {
@@ -11,6 +13,16 @@ namespace DotNetGameFramework
         /// Channel
         /// </summary>
         SocketServerChannel Channel { get; }
+
+        /// <summary>
+        /// 输出
+        /// </summary>
+        PipeWriter Output { get; }
+
+        /// <summary>
+        /// 输入
+        /// </summary>
+        PipeReader Input { get; }
 
         /// <summary>
         /// 添加Handler

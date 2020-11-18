@@ -1,9 +1,12 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DotNetGameFramework
@@ -12,6 +15,9 @@ namespace DotNetGameFramework
     {
         // 判断平台属性
         private static readonly bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+        // 默认最小分配buff大小
+        private static readonly int MinAllocBufferSize = SlabMemoryPool.BlockSize / 2;
 
         /// <summary>
         /// ChannelId
@@ -51,7 +57,7 @@ namespace DotNetGameFramework
         /// <summary>
         /// 接受buffpool
         /// </summary>
-        private readonly ByteBufPool<ByteBuf> _bufPool;
+        private MemoryPool<byte> MemoryPool { get; }
 
         /// <summary>
         /// 分配buff之前先等待数据
@@ -68,27 +74,39 @@ namespace DotNetGameFramework
         /// </summary>
         private Task _processingTask;
 
+        private Pipe pipe;
+
+        public IDuplexPipe ApplicationToTransport { get; }
+
+        public IDuplexPipe TransportToApplication { get; }
+
+        public PipeWriter Input => TransportToApplication.Output;
+
+        public PipeReader Output => TransportToApplication.Input;
+
 
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="socketServer"></param>
-        public SocketServerChannel(Socket socket, SocketServer socketServer, ByteBufPool<ByteBuf> bufPool,
-                                        PipeScheduler transportScheduler,
-                                        bool useInlineSchedulers = false,
-                                        bool waitForData = true)
+        public SocketServerChannel(Socket socket, SocketServer socketServer,
+                                   MemoryPool<byte> memoryPool,
+                                   PipeScheduler transportScheduler,
+                                   bool useInlineSchedulers = false,
+                                   bool waitForData = true)
         {
             Id = Guid.NewGuid().ToString();
             SocketServer = socketServer;
-            ChannelPipeline = new DefaultChannelPipeline(this);
-            _bufPool = bufPool;
+            MemoryPool = memoryPool;
             _waitForData = waitForData;
 
             // 初始化Socket相关
             Socket = socket;
 
-            var awaiterScheduler = IsWindows ? transportScheduler : PipeScheduler.Inline;
+
+            // 初始化Pipeline
             var applicationScheduler = PipeScheduler.ThreadPool;
+            var awaiterScheduler = IsWindows ? transportScheduler : PipeScheduler.Inline;
             if (useInlineSchedulers)
             {
                 transportScheduler = PipeScheduler.Inline;
@@ -96,8 +114,19 @@ namespace DotNetGameFramework
                 applicationScheduler = PipeScheduler.Inline;
             }
 
+            var inputOptions = new PipeOptions(MemoryPool, applicationScheduler, transportScheduler, socketServer.SocketOptions.MaxReadBufferSize, socketServer.SocketOptions.MaxReadBufferSize / 2, useSynchronizationContext: false);
+            var outputOptions = new PipeOptions(MemoryPool, transportScheduler, applicationScheduler, socketServer.SocketOptions.MaxWriteBufferSize, socketServer.SocketOptions.MaxWriteBufferSize / 2, useSynchronizationContext: false);
+
+            var pair = DuplexPipe.CreateConnectionPair(inputOptions, outputOptions);
+
+            ApplicationToTransport = pair.Item1;
+            TransportToApplication = pair.Item2;
+
             _socketReceiver = new SocketReceiver(socket, awaiterScheduler);
             _socketSender = new SocketSender(socket, awaiterScheduler);
+
+            ChannelPipeline = new DefaultChannelPipeline(this);
+
 
             IsConnected = true;
         }
@@ -114,11 +143,12 @@ namespace DotNetGameFramework
         {
             try
             {
-                var receiveTask = DoReceive();
+                var recvTask = DoReceive();
                 var sendTask = DoSend();
-
-                await receiveTask;
+                var recvToAppTask = DoAppDataReadAsync();
+                await recvTask;
                 await sendTask;
+                await recvToAppTask;
 
                 _socketReceiver.Dispose();
                 _socketSender.Dispose();
@@ -161,6 +191,8 @@ namespace DotNetGameFramework
             }
             finally
             {
+                Input.Complete(error);
+
                 // If Shutdown() has already bee called, assume that was the reason ProcessReceives() exited.
                 ChannelPipeline.FireExceptionCaught(error);
                 Shutdown();
@@ -174,6 +206,7 @@ namespace DotNetGameFramework
         /// <returns></returns>
         private async Task ProcessReceives()
         {
+            var input = Input;
             while (true)
             {
                 if (!IsConnected)
@@ -186,20 +219,21 @@ namespace DotNetGameFramework
                     await _socketReceiver.WaitForDataAsync();
                 }
 
-                var buf = AllocByteBuf();
-                var bytesReceived = await _socketReceiver.ReceiveAsync(buf);
+                var buffer = input.GetMemory(MinAllocBufferSize);
+                var bytesReceived = await _socketReceiver.ReceiveAsync(buffer);
 
-                if (bytesReceived > 0)
+                if (bytesReceived == 0)
                 {
-                    ByteBuf buff = (_socketReceiver.UserToken as ByteBuf);
-                    buff.WriterIndex += bytesReceived;
-                    buff.Retain();
-
-                    // TODO 应用线程池处理消息接收
-                    ChannelPipeline.FireChannelRead(buff);
+                    break;
                 }
-                else
+                input.Advance(bytesReceived);
+
+                var flushTask = input.FlushAsync();
+                var result = await flushTask;
+
+                if (result.IsCompleted || result.IsCanceled)
                 {
+                    // Pipe consumer is shut down, do we stop writing
                     break;
                 }
             }
@@ -237,6 +271,9 @@ namespace DotNetGameFramework
                 // If Shutdown() has already bee called, assume that was the reason ProcessReceives() exited.
                 ChannelPipeline.FireExceptionCaught(error);
                 Shutdown();
+
+                Output.Complete(error);
+                Input.CancelPendingFlush();
             }
         }
 
@@ -246,6 +283,7 @@ namespace DotNetGameFramework
         /// <returns></returns>
         private async Task ProcessSends()
         {
+            var output = Output;
             while (true)
             {
                 if (!IsConnected)
@@ -253,33 +291,61 @@ namespace DotNetGameFramework
                     break;
                 }
 
-                if (sendQueue.Count == 0)
+                var result = await output.ReadAsync();
+                if (result.IsCanceled)
                 {
-                    await Task.Yield();
+                    break;
                 }
 
-                if (sendQueue.TryDequeue(out ByteBuf buff))
+                var buffer = result.Buffer;
+                var end = buffer.End;
+                var isCompleted = result.IsCompleted;
+                if (!buffer.IsEmpty)
                 {
-                    await _socketSender.SendAsync(buff);
-                    buff.Release();
+                    await _socketSender.SendAsync(buffer);
                 }
-                else
+
+                output.AdvanceTo(end);
+
+                if (isCompleted)
                 {
-                    await Task.Yield();
+                    break;
                 }
             }
         }
 
         /// <summary>
-        /// 分配ByteBuf
+        /// 接收数据到应用层
         /// </summary>
         /// <returns></returns>
-        private ByteBuf AllocByteBuf()
+        public async Task DoAppDataReadAsync()
         {
-            var buf = _bufPool.Allocate();
-            buf.Deallocate = _bufPool.Free;
+            var input = ApplicationToTransport.Input;
+            while (true)
+            {
 
-            return buf;
+                var result = await input.ReadAsync();
+                if (result.IsCanceled)
+                {
+                    break;
+                }
+
+                var buffer = result.Buffer;
+                var isCompleted = result.IsCompleted;
+                if (!buffer.IsEmpty)
+                {
+                    await Task.Run(() =>
+                    {
+                        ChannelPipeline.FireChannelRead(buffer);
+                    });
+                }
+
+                if (isCompleted)
+                {
+                    break;
+                }
+            }
+
         }
 
         /// <summary>
@@ -298,7 +364,28 @@ namespace DotNetGameFramework
                 return;
             }
 
-            sendQueue.Enqueue(buf);
+            var output = ApplicationToTransport.Output;
+            //var size = buf.ReadableBytes;
+            //var index = size;
+
+            //do
+            //{
+            //    var buff = output.GetMemory(MinAllocBufferSize);
+            //    var span = buff.Span;
+            //    var end = Math.Min(size, span.Length);
+            //    for (int i = 0; i < end; i++)
+            //    {
+            //        span[i] = buf.ReadByte();
+            //    }
+            //    index -= end;
+            //} while (index > 0);
+            //output.Advance(size);
+
+            var buff = output.GetMemory(MinAllocBufferSize);
+            buf.Data.AsMemory<byte>().Slice(buf.ReaderIndex, buf.ReadableBytes).CopyTo(buff);
+            output.Advance(buf.ReadableBytes);
+            output.FlushAsync();
+            //sendQueue.Enqueue(buf);
         }
 
 
@@ -324,6 +411,9 @@ namespace DotNetGameFramework
 
                 Socket.Close();
                 Socket.Dispose();
+
+                _socketReceiver.Dispose();
+                _socketSender.Dispose();
             }
             catch (ObjectDisposedException) { }
 

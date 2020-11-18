@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 
 namespace DotNetGameFramework
 {
@@ -33,18 +34,18 @@ namespace DotNetGameFramework
         public bool ReusePort { get; set; } = true;
 
         /// <summary>
-        /// 默认ByteBuf分配大小
+        /// 默认内存池
         /// </summary>
-        public int DefaultByteBufSize { get; set; } = 256;
+        public MemoryPool<byte> MemoryPool { get; set; } = new SlabMemoryPool();
 
         /// <summary>
-        /// 默认ByteBuffSize
+        /// 最大读BuffSize
         /// </summary>
-        public int MinByteBufPoolSize { get; set; } = 10;
+        public long MaxReadBufferSize { get; set; } = 1024 * 1024;
 
         /// <summary>
-        /// 默认ByteBuffSize
+        /// 最大写BuffSize
         /// </summary>
-        public int MaxByteBufPoolSize { get; set; } = 50;
+        public long MaxWriteBufferSize { get; set; } = 64 * 1024;
     }
 }

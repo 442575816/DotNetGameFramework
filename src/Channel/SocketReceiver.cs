@@ -24,7 +24,7 @@ namespace DotNetGameFramework
         /// <returns></returns>
         public SocketAwaitableEventArgs WaitForDataAsync()
         {
-            _awaitableEventArgs.SetBuffer(null, 0, 0);
+            _awaitableEventArgs.SetBuffer(Memory<byte>.Empty);
             if (!_socket.ReceiveAsync(_awaitableEventArgs))
             {
                 _awaitableEventArgs.Complete();
@@ -43,6 +43,22 @@ namespace DotNetGameFramework
             _awaitableEventArgs.SetBuffer(buff.Data, buff.WriterIndex, buff.WritableBytes);
             _awaitableEventArgs.UserToken = buff;
 
+            if (!_socket.ReceiveAsync(_awaitableEventArgs))
+            {
+                _awaitableEventArgs.Complete();
+            }
+
+            return _awaitableEventArgs;
+        }
+
+        /// <summary>
+        /// 接受数据
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
+        public SocketAwaitableEventArgs ReceiveAsync(Memory<byte> buffer)
+        {
+            _awaitableEventArgs.SetBuffer(buffer);
             if (!_socket.ReceiveAsync(_awaitableEventArgs))
             {
                 _awaitableEventArgs.Complete();

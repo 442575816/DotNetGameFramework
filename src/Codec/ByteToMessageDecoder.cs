@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace DotNetGameFramework
 {
@@ -10,23 +12,15 @@ namespace DotNetGameFramework
 
         public override void FireChannelRead(ChannelHandlerContext context, object msg)
         {
-            if (msg is ByteBuf)
+            if (msg is ReadOnlySequence<byte>)
             {
                 List<object> outputList = new List<object>();
+                var data = (ReadOnlySequence<byte>)msg;
+                var reader = new SequenceReader<byte>(data);
+
                 try
                 {
-                    ByteBuf data = msg as ByteBuf;
-                    first = cumulation == null;
-
-                    if (first)
-                    {
-                        cumulation = data;
-                    }
-                    else
-                    {
-                        cumulation = Cumulate(cumulation, data);
-                    }
-                    CallDecode(context, cumulation, outputList);
+                    CallDecode(context, ref reader, outputList);
                 }
                 catch (Exception e)
                 {
@@ -34,12 +28,9 @@ namespace DotNetGameFramework
                 }
                 finally
                 {
-                    if (cumulation != null && cumulation.ReadableBytes <= 0)
-                    {
-                        cumulation.Release();
-                        cumulation = null;
-                    }
-
+                    var input = context.ChannelPipeline.Input;
+                    SequencePosition end = data.GetPosition(reader.Consumed);
+                    input.AdvanceTo(end);
                     if (outputList.Count > 0)
                     {
                         for (int i = 0; i < outputList.Count; i++)
@@ -61,7 +52,7 @@ namespace DotNetGameFramework
         /// <param name="context"></param>
         /// <param name="cumulation"></param>
         /// <param name="outputList"></param>
-        protected abstract void CallDecode(ChannelHandlerContext context, ByteBuf buf, List<object> outputList);
+        protected abstract void CallDecode(ChannelHandlerContext context, ref SequenceReader<byte> data, List<object> outputList);
 
         /// <summary>
         /// 连接ByteBuf

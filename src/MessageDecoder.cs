@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,30 +7,33 @@ namespace DotNetGameFramework
 {
     public class MessageDecoder : ByteToMessageDecoder
     {
-        protected override void CallDecode(ChannelHandlerContext context, ByteBuf buf, List<object> outputList)
+        protected override void CallDecode(ChannelHandlerContext context, ref SequenceReader<byte> buff, List<object> outputList)
         {
-            if (buf.ReadableBytes < 4)
+            if (buff.Length < 4)
             {
                 return;
             }
 
-            int dataLen = buf.GetInt();
-            if (buf.ReadableBytes < dataLen + 4)
+            buff.TryReadBigEndian(out int dataLen);
+            if (buff.Length < dataLen + 4)
             {
                 return;
             }
-
-            buf.SkipBytes(4);
 
             byte[] array = new byte[32];
-            buf.ReadBytes(array);
+            Span<byte> span = array.AsSpan<byte>();
+            buff.TryCopyTo(span);
+            buff.Advance(32);
 
             RequestMessage message = new RequestMessage();
             message.Command = Encoding.UTF8.GetString(array).Trim('\0');
-            message.RequestId = buf.ReadInt();
-            
+            buff.TryReadBigEndian(out int requestId);
+            message.RequestId = requestId;
+
             array = new byte[dataLen - 36];
-            buf.ReadBytes(array);
+            span = array.AsSpan<byte>();
+            buff.TryCopyTo(span);
+            buff.Advance(array.Length);
             message.Content = Encoding.UTF8.GetString(array);
 
             outputList.Add(message);

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO.Pipelines;
+using System.Threading.Tasks;
 
 namespace DotNetGameFramework
 {
@@ -16,6 +18,16 @@ namespace DotNetGameFramework
         // Tail
         private DefaultChannelHandlerContext Tail { get; set; }
 
+        /// <summary>
+        /// 输出
+        /// </summary>
+        public PipeWriter Output { get; }
+
+        /// <summary>
+        /// 输入
+        /// </summary>
+        public PipeReader Input { get; }
+
 
         /// <summary>
         /// 构造函数
@@ -23,6 +35,8 @@ namespace DotNetGameFramework
         /// <param name="channel"></param>
         public DefaultChannelPipeline(SocketServerChannel channel)
         {
+            Channel = channel;
+
             DefaultChannelHandlerContext emptyHeader = new DefaultChannelHandlerContext(this, "Internal_Head_Handler", null);
             DefaultChannelHandlerContext emptyTailer = new DefaultChannelHandlerContext(this, "Internal_Tail_Handler", null);
             Head = emptyHeader;
@@ -30,7 +44,9 @@ namespace DotNetGameFramework
             Head.Next = Tail;
             Tail.Prev = Head;
             
-            Channel = channel;
+           
+            Output = channel.ApplicationToTransport.Output;
+            Input = channel.ApplicationToTransport.Input;
         }
 
         public void AddFirst(string name, ChannelHandler handler)
