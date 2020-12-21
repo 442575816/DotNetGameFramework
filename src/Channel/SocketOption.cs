@@ -34,6 +34,11 @@ namespace DotNetGameFramework
         public bool ReusePort { get; set; } = true;
 
         /// <summary>
+        /// 是否使用Https
+        /// </summary>
+        public bool UseHttps { get; set; } = false;
+
+        /// <summary>
         /// 默认内存池
         /// </summary>
         public MemoryPool<byte> MemoryPool { get; set; } = new SlabMemoryPool();

@@ -14,15 +14,20 @@ namespace DotNetGameFramework
         static void Main(string[] args)
         {
             SocketOption option = new SocketOption();
-            SocketServer server = new SocketServer("127.0.0.1", "8088", option);
-            server.ServerHandler = new MyServerHandler();
-            server.Bind();
-            server.AcceptAsync();
+            //SocketServer server = new SocketServer("127.0.0.1", "8088", option);
+            //server.ServerHandler = new MyServerHandler();
+            //server.Bind();
+            //server.AcceptAsync();
             //Console.WriteLine("Start");
             //var task = DoSomething1();
             //DoSomething2();
             //DoSomething3();
-            
+
+            HttpServer httpServer = new HttpServer("127.0.0.1", 8080, option);
+            httpServer.Start();
+
+
+
             //Console.WriteLine($"End {task.Result}");
             Console.Read();
         }
