@@ -34,7 +34,7 @@ namespace DotNetGameFramework
             span = array.AsSpan<byte>();
             buff.TryCopyTo(span);
             buff.Advance(array.Length);
-            message.Content = Encoding.UTF8.GetString(array);
+            message.Content = array;
 
             outputList.Add(message);
         }

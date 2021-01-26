@@ -10,7 +10,7 @@ namespace DotNetGameFramework
         {
             //Task.Run(() =>
             //{
-                RequestMessage message = msg as RequestMessage;
+                RequestMessage message = (RequestMessage)msg;
                 string response = $"hello world 111";
                 byte[] bodyBytes = Encoding.UTF8.GetBytes(response);
                 byte[] commandBytes = Encoding.UTF8.GetBytes(message.Command);

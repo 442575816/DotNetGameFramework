@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace DotNetGameFramework
 {
-    public class SocketServerChannel
+    public class SocketServerChannel : DefaultAttributeMap
     {
         // 判断平台属性
         private static readonly bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -38,6 +38,14 @@ namespace DotNetGameFramework
         /// 是否连接中
         /// </summary>
         public bool IsConnected { get; private set; }
+
+        /// <summary>
+        /// 关闭连接
+        /// </summary>
+        public void Close()
+        {
+            throw new NotImplementedException();
+        }
 
         /// <summary>
         /// ChannelPipeline
@@ -346,6 +354,15 @@ namespace DotNetGameFramework
                 }
             }
 
+        }
+
+        /// <summary>
+        /// 写消息
+        /// </summary>
+        /// <param name="msg"></param>
+        public ChannelFuture Write(object msg)
+        {
+            return ChannelPipeline.Write(msg);
         }
 
         /// <summary>

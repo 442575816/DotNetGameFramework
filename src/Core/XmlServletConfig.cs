@@ -78,5 +78,30 @@ namespace DotNetGameFramework
             }
             return null;
         }
+
+        public int GetSessionTickTime()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetSessionTimeoutMillis()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetSessionEmptyTimeoutMillis()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetSessionInvalidateMillis()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetSessionNextDayInvalidateMillis()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

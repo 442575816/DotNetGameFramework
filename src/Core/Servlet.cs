@@ -17,6 +17,10 @@ namespace DotNetGameFramework
         /// </summary>
         void Service(Request request, Response response);
 
-        
+        /// <summary>
+        /// 是否启用压缩
+        /// </summary>
+        const string ACTION_COMPRESS = "compress";
+
     }
 }
