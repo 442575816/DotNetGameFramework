@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace DotNetGameFramework
 {
-    public class SocketServerChannel : DefaultAttributeMap
+    public class SocketServerChannel : DefaultAttributeMap, Channel
     {
         // 判断平台属性
         private static readonly bool IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -38,14 +38,6 @@ namespace DotNetGameFramework
         /// 是否连接中
         /// </summary>
         public bool IsConnected { get; private set; }
-
-        /// <summary>
-        /// 关闭连接
-        /// </summary>
-        public void Close()
-        {
-            throw new NotImplementedException();
-        }
 
         /// <summary>
         /// ChannelPipeline
@@ -78,15 +70,15 @@ namespace DotNetGameFramework
         private ConcurrentQueue<ByteBuf> sendQueue = new ConcurrentQueue<ByteBuf>();
 
         /// <summary>
-        /// 处理的任务
+        /// 应用往传输层Pipeline
         /// </summary>
-        private Task _processingTask;
-
-        private Pipe pipe;
-
         public IDuplexPipe ApplicationToTransport { get; }
 
+        /// <summary>
+        /// 传输层往应用层Pipeline
+        /// </summary>
         public IDuplexPipe TransportToApplication { get; }
+
 
         public PipeWriter Input => TransportToApplication.Output;
 
@@ -144,9 +136,14 @@ namespace DotNetGameFramework
         /// </summary>
         public void Start()
         {
-            _processingTask = StartAsync();
+            _ = StartAsync();
         }
 
+       
+        /// <summary>
+        /// 异步开始
+        /// </summary>
+        /// <returns></returns>
         private async Task StartAsync()
         {
             try
@@ -166,6 +163,7 @@ namespace DotNetGameFramework
             }
         }
 
+        #region socket接受数据
         /// <summary>
         /// 开始接收任务
         /// </summary>
@@ -246,6 +244,50 @@ namespace DotNetGameFramework
                 }
             }
         }
+        #endregion
+
+        #region socket发送数据
+
+        /// <summary>
+        /// 异步发送数据
+        /// </summary>
+        /// <param name="buf"></param>
+        public void SendAsync(ByteBuf buf)
+        {
+            if (!IsConnected)
+            {
+                return;
+            }
+
+            if (buf.ReadableBytes == 0)
+            {
+                return;
+            }
+
+            var output = ApplicationToTransport.Output;
+            //var size = buf.ReadableBytes;
+            //var index = size;
+
+            //do
+            //{
+            //    var buff = output.GetMemory(MinAllocBufferSize);
+            //    var span = buff.Span;
+            //    var end = Math.Min(size, span.Length);
+            //    for (int i = 0; i < end; i++)
+            //    {
+            //        span[i] = buf.ReadByte();
+            //    }
+            //    index -= end;
+            //} while (index > 0);
+            //output.Advance(size);
+
+            var buff = output.GetMemory(MinAllocBufferSize);
+            buf.Data.AsMemory<byte>().Slice(buf.ReaderIndex, buf.ReadableBytes).CopyTo(buff);
+            output.Advance(buf.ReadableBytes);
+            output.FlushAsync();
+            buf.Release();
+            //sendQueue.Enqueue(buf);
+        }
 
         /// <summary>
         /// 处理消息发送
@@ -321,6 +363,9 @@ namespace DotNetGameFramework
                 }
             }
         }
+        #endregion
+
+        #region socket接受到的数据发送给应用层
 
         /// <summary>
         /// 接收数据到应用层
@@ -342,10 +387,11 @@ namespace DotNetGameFramework
                 var isCompleted = result.IsCompleted;
                 if (!buffer.IsEmpty)
                 {
-                    await Task.Run(() =>
-                    {
-                        ChannelPipeline.FireChannelRead(buffer);
-                    });
+                    //await Task.Run(() =>
+                    //{
+
+                    //});
+                    ChannelPipeline.FireChannelRead(buffer);
                 }
 
                 if (isCompleted)
@@ -355,6 +401,7 @@ namespace DotNetGameFramework
             }
 
         }
+        #endregion
 
         /// <summary>
         /// 写消息
@@ -366,43 +413,15 @@ namespace DotNetGameFramework
         }
 
         /// <summary>
-        /// 异步发送数据
+        /// 关闭连接
         /// </summary>
-        /// <param name="buf"></param>
-        public void SendAsync(ByteBuf buf)
+        public void Close()
         {
-            if (!IsConnected)
-            {
-                return;
-            }
+            TransportToApplication.Input.Complete();
+            TransportToApplication.Output.Complete();
+            ApplicationToTransport.Input.Complete();
+            ApplicationToTransport.Output.Complete();
 
-            if (buf.ReadableBytes == 0)
-            {
-                return;
-            }
-
-            var output = ApplicationToTransport.Output;
-            //var size = buf.ReadableBytes;
-            //var index = size;
-
-            //do
-            //{
-            //    var buff = output.GetMemory(MinAllocBufferSize);
-            //    var span = buff.Span;
-            //    var end = Math.Min(size, span.Length);
-            //    for (int i = 0; i < end; i++)
-            //    {
-            //        span[i] = buf.ReadByte();
-            //    }
-            //    index -= end;
-            //} while (index > 0);
-            //output.Advance(size);
-
-            var buff = output.GetMemory(MinAllocBufferSize);
-            buf.Data.AsMemory<byte>().Slice(buf.ReaderIndex, buf.ReadableBytes).CopyTo(buff);
-            output.Advance(buf.ReadableBytes);
-            output.FlushAsync();
-            //sendQueue.Enqueue(buf);
         }
 
 
@@ -427,7 +446,6 @@ namespace DotNetGameFramework
                 catch (SocketException) { }
 
                 Socket.Close();
-                Socket.Dispose();
 
                 _socketReceiver.Dispose();
                 _socketSender.Dispose();

@@ -114,7 +114,7 @@ namespace DotNetGameFramework
         {
             EnsureAccessible();
             EnsureWritable(4);
-            ByteUtil.SetInt(Data, ReaderIndex, value);
+            ByteUtil.SetInt(Data, WriterIndex, value);
             WriterIndex += 4;
         }
 
@@ -126,7 +126,7 @@ namespace DotNetGameFramework
         {
             EnsureAccessible();
             EnsureWritable(8);
-            ByteUtil.SetLong(Data, ReaderIndex, value);
+            ByteUtil.SetLong(Data, WriterIndex, value);
             WriterIndex += 8;
         }
 

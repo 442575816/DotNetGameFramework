@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<servlet>
+    <init-param>
+        <props>
+            <property name="compress" type="bool">false</property>
+        </props>
+    </init-param>
+</servlet>
+    

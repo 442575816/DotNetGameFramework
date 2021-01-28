@@ -33,17 +33,20 @@ namespace DotNetGameFramework
         /// </summary>
         public IWebHost Host { get; private set; }
 
+        private HttpDefaultHandler httpHandler;
+
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
         /// <param name="option"></param>
-        public HttpServer(string ip, int port, SocketOption option)
+        public HttpServer(string ip, int port, SocketOption option, HttpDefaultHandler httpHandler)
         {
             this.host = ip;
             this.port = port;
             Options = option;
+            this.httpHandler = httpHandler;
         }
 
         /// <summary>
@@ -63,17 +66,12 @@ namespace DotNetGameFramework
             Host = new WebHostBuilder().UseUrls(urls.ToArray())
                                        .UseKestrel()
                                        .Configure(app => {
-                                           app.Run(HandleHttpRequestAsync);
+                                           app.Run(httpHandler.HandleHttpRequestAsync);
                                        })
                                        .Build();
             var task = Host.StartAsync();
             return task;
             
-        }
-
-        private async Task HandleHttpRequestAsync(HttpContext http)
-        {
-            await http.Response.WriteAsync("Hello World");
         }
     }
 }

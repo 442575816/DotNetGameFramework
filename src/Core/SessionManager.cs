@@ -133,7 +133,10 @@ namespace DotNetGameFramework
         /// <returns></returns>
         public Session GetSession(string sessionId, bool allowCreate = false)
         {
-            if (null == sessionId)
+            if (null == sessionId && !allowCreate)
+            {
+                return null;
+            } else if (null == sessionId)
             {
                 sessionId = CreateNewSessionId();
             }
@@ -164,6 +167,10 @@ namespace DotNetGameFramework
         /// <returns></returns>
         public void Access(string sessionId)
         {
+            if (null == sessionId)
+            {
+                return;
+            }
             if (sessions.TryGetValue(sessionId, out var session))
             {
                 session.Access();

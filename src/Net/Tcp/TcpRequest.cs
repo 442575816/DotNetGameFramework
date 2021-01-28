@@ -81,7 +81,7 @@ namespace DotNetGameFramework
         }
 
         /// <inheritdoc/>
-        public Dictionary<string, string[]> ParamterMap
+        public Dictionary<string, string[]> ParameterMap
         {
             get
             {

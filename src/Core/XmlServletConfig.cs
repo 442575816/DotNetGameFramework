@@ -65,7 +65,7 @@ namespace DotNetGameFramework
             {
                 "int" => int.TryParse(content, out int result1) ? result1 : null,
                 "string" => content,
-                "boolean" => bool.TryParse(content, out bool result2) ? result2 : null,
+                "bool" => bool.TryParse(content, out bool result2) ? result2 : null,
                 _ => null,
             };
         }
@@ -81,27 +81,37 @@ namespace DotNetGameFramework
 
         public int GetSessionTickTime()
         {
-            throw new NotImplementedException();
+            var content = GetInitParam("sessionTickTime");
+
+            return (null == content) ? 20000 : (int)content;
         }
 
         public int GetSessionTimeoutMillis()
         {
-            throw new NotImplementedException();
+            var content = GetInitParam("sessionTimeoutTime");
+
+            return (null == content) ? 180000 : (int)content;
         }
 
         public int GetSessionEmptyTimeoutMillis()
         {
-            throw new NotImplementedException();
+            var content = GetInitParam("sessionEmptyTimeoutTime");
+
+            return (null == content) ? 40000 : (int)content;
         }
 
         public int GetSessionInvalidateMillis()
         {
-            throw new NotImplementedException();
+            var content = GetInitParam("sessionInvalidateMillis");
+
+            return (null == content) ? 86400000 : (int)content;
         }
 
         public int GetSessionNextDayInvalidateMillis()
         {
-            throw new NotImplementedException();
+            var content = GetInitParam("sessionNextDayInvalidateMillis");
+
+            return (null == content) ? 1800000 : (int)content;
         }
     }
 }

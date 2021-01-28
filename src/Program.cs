@@ -13,51 +13,6 @@ using System.Collections.Concurrent;
 
 namespace DotNetGameFramework
 {
-    interface ResultTest<out T>
-    {
-        string ViewName { get; }
-        T Result { get; }
-    }
-
-    interface ViewTest<T>
-    {
-        void Render(ResultTest<T> result);
-    }
-
-    class ByteResult<T> : ResultTest<T>
-    {
-        T _result;
-
-        public ByteResult(T result)
-        {
-            _result = result;
-        }
-
-        public string ViewName => "byte";
-
-        public T Result => _result;
-    }
-
-    class ByteView : ViewTest<byte>
-    {
-        
-
-        public void Render(ResultTest<byte> result)
-        {
-            var type = typeof(byte);
-            Console.WriteLine($" type is {type.Name}");
-        }
-    }
-
-    class A
-    {
-
-    }
-
-    class B : A
-    {
-
-    }
 
     /// <summary>
     /// out 协变 只能是返回结果
@@ -98,29 +53,7 @@ namespace DotNetGameFramework
 
             //Console.WriteLine($"End {task.Result}");
 
-            Dictionary<String, object> resultDict = new Dictionary<string, object>();
-            Dictionary<String, object> viewDict = new Dictionary<string, object>();
-            resultDict["byte"] = new ByteResult<byte>(11);
-            viewDict["byte"] = new ByteView();
-
-            var result = resultDict["byte"];
-
-
-            var view = viewDict["byte"];
-
-            Console.WriteLine($"the view is {view}");
-
-            MethodInfo mi = view.GetType().GetMethod("Render");
-            mi.Invoke(view, new object[] { result });
-            //_view.Render(_result);
-
-
-            // 测试Services
-            ServiceCollection services = new ServiceCollection();
-            services.AddSingleton<ByteResult<byte>>();
-
-            var provider = services.BuildServiceProvider();
-            Console.WriteLine($"provider:{provider.GetService(typeof(ByteResult<byte>))} ");
+           
 
             Dictionary<string, string> dict = new Dictionary<string, string>();
             dict["a"] = "1";
@@ -194,6 +127,36 @@ namespace DotNetGameFramework
 
             Console.WriteLine($"cas dict :{dict2.GetHashCode()}");
 
+            ByteBuf buf = new ByteBuf(50);
+            buf.Retain();
+            buf.WriteInt(46);
+
+            byte[] bs = Encoding.UTF8.GetBytes("helloworld");
+            byte[] bs1 = new byte[32];
+            Array.Copy(bs, bs1, bs.Length);
+
+            buf.WriteBytes(bs1);
+            buf.WriteInt(0);
+            buf.WriteBytes(Encoding.UTF8.GetBytes("helloworld"));
+            Console.WriteLine();
+            foreach (byte b in buf.Data)
+            {
+                var hex = string.Format("{0:X}", b);
+                if (hex.Length < 2)
+                {
+                    hex = "0" + hex;
+                }
+                Console.Write(hex);
+            }
+            Console.WriteLine();
+
+
+            Console.WriteLine($"regex:{HttpUtil.GetCommand("/root1/helloworld.action")}");
+
+            StartTcpServer();
+
+            //var waitForStop = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            //waitForStop.Task.GetAwaiter().GetResult();
             Console.Read();
         }
 
@@ -217,12 +180,58 @@ namespace DotNetGameFramework
             Console.WriteLine("DoSomething3");
             return 3;
         }
+
+
+        static void StartTcpServer()
+        {
+            var servlet = new DispatchServlet();
+            var servletConfig = new XmlServletConfig("servlet.xml");
+            var context = new DefaultServletContext();
+
+            servlet.Init(servletConfig, context);
+            SessionManager.Instance.ServletConfig = servletConfig;
+            SessionManager.Instance.StartSessionCheckThread();
+            SessionManager.Instance.SessionEvent += (eventType, sessionEvent) =>
+            {
+                //Console.WriteLine($"eventType:{eventType}");
+            };
+            SessionManager.Instance.SessionAttributeEvent += (eventType, SessionAttributeEvent) =>
+            {
+                //Console.WriteLine($"eventType:{eventType}");
+            };
+            servlet.AddHandler("helloworld", (request, response) =>
+            {
+                return new ByteResult(Encoding.UTF8.GetBytes("helloworld"));
+            });
+            servlet.AddView(new ByteView());
+
+            SocketOption option = new SocketOption();
+            WrapperUtil.ByteBufPool = new ByteBufPool<ByteBuf>(() => new ByteBuf(100), 5, 10);
+            //SocketServer server = new SocketServer("127.0.0.1", "8010", option);
+            //server.ServerHandler = new MyServerHandler(servlet, servletConfig, context);
+            //server.Bind();
+            //server.AcceptAsync();
+
+            HttpServer httpServer = new HttpServer("127.0.0.1", 8080, option, new HttpDefaultHandler(servlet, context));
+            httpServer.Start();
+        }
     }
 
     
 
     class MyServerHandler : ServerHandler
     {
+        private DispatchServlet servlet;
+        private XmlServletConfig servletConfig;
+        private DefaultServletContext context;
+
+        public MyServerHandler(DispatchServlet servlet, XmlServletConfig servletConfig, DefaultServletContext context)
+        {
+            this.servlet = servlet;
+            this.servletConfig = servletConfig;
+            this.context = context;
+        }
+
         public void FireExceptionCaught(Exception e)
         {
             Console.WriteLine(e);
@@ -231,8 +240,8 @@ namespace DotNetGameFramework
         public void InitChannel(SocketServerChannel channel)
         {
             channel.ChannelPipeline.AddLast("decoder", new MessageDecoder());
-            channel.ChannelPipeline.AddLast("handler", new MessageHandler());
-            Console.WriteLine($"new connnect {channel}");
+            channel.ChannelPipeline.AddLast("handler", new MessageHandler(servlet, context));
+            //Console.WriteLine($"new connnect {channel}");
         }
     }
 }

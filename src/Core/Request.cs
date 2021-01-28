@@ -11,7 +11,7 @@ namespace DotNetGameFramework
         /// <summary>
         /// 参数Map
         /// </summary>
-        Dictionary<string, string[]> ParamterMap { get; }
+        Dictionary<string, string[]> ParameterMap { get; }
 
         /// <summary>
         /// 请求Command

@@ -15,12 +15,6 @@ namespace DotNetGameFramework
         void Write(object obj);
 
         /// <summary>
-        /// 获取Http Header
-        /// </summary>
-        /// <returns></returns>
-        Dictionary<string, string> GetHeaders();
-
-        /// <summary>
         /// 添加头
         /// </summary>
         /// <param name="name"></param>
@@ -28,9 +22,26 @@ namespace DotNetGameFramework
         void AddHeader(string name, string value);
 
         /// <summary>
+        /// 添加Cookie
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        void AddCookie(string name, string value);
+
+        /// <summary>
         /// 获取响应内容
         /// </summary>
-        byte[] Content { get; }
+        object Content { get; }
+
+        /// <summary>
+        /// Cookies
+        /// </summary>
+        Dictionary<string, string> Cookies { get; }
+
+        /// <summary>
+        /// Headers
+        /// </summary>
+        Dictionary<string, string> Headers { get; }
 
         /// <summary>
         /// Http状态码
