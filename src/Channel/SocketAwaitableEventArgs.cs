@@ -25,7 +25,7 @@ namespace DotNetGameFramework
         /// <summary>
         /// 构造函数
         /// </summary>
-        public SocketAwaitableEventArgs(PipeScheduler ioScheduler)
+        public SocketAwaitableEventArgs(PipeScheduler ioScheduler) : base(unsafeSuppressExecutionContextFlow: true)
         {
             _ioScheduler = ioScheduler;
         }
@@ -50,6 +50,7 @@ namespace DotNetGameFramework
             Debug.Assert(IsCompleted);
 
             _callback = null;
+
             if (SocketError != SocketError.Success)
             {
                 // Socket异常了

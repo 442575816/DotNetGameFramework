@@ -29,6 +29,6 @@ namespace DotNetGameFramework
         /// 关闭链接
         /// </summary>
         /// <returns></returns>
-        bool Shutdown();
+        void Shutdown();
     }
 }

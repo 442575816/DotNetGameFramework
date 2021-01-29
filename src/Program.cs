@@ -128,7 +128,6 @@ namespace DotNetGameFramework
             Console.WriteLine($"cas dict :{dict2.GetHashCode()}");
 
             ByteBuf buf = new ByteBuf(50);
-            buf.Retain();
             buf.WriteInt(46);
 
             byte[] bs = Encoding.UTF8.GetBytes("helloworld");
@@ -184,6 +183,8 @@ namespace DotNetGameFramework
 
         static void StartTcpServer()
         {
+            //ThreadPool.SetMaxThreads(8, 4);
+            //ThreadPool.SetMinThreads(8, 4);
             var servlet = new DispatchServlet();
             var servletConfig = new XmlServletConfig("servlet.xml");
             var context = new DefaultServletContext();
@@ -207,10 +208,10 @@ namespace DotNetGameFramework
 
             SocketOption option = new SocketOption();
             WrapperUtil.ByteBufPool = new ByteBufPool<ByteBuf>(() => new ByteBuf(100), 5, 10);
-            //SocketServer server = new SocketServer("127.0.0.1", "8010", option);
-            //server.ServerHandler = new MyServerHandler(servlet, servletConfig, context);
-            //server.Bind();
-            //server.AcceptAsync();
+            SocketServer server = new SocketServer("127.0.0.1", "8010", option);
+            server.ServerHandler = new MyServerHandler(servlet, servletConfig, context);
+            server.Bind();
+            server.AcceptAsync();
 
             HttpServer httpServer = new HttpServer("127.0.0.1", 8080, option, new HttpDefaultHandler(servlet, context));
             httpServer.Start();

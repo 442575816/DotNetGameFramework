@@ -102,7 +102,6 @@ namespace DotNetGameFramework
             if (null == buff)
             {
                 buff = WrapperUtil.ByteBufPool.Allocate();
-                buff.Retain();
             }
 
             return buff;

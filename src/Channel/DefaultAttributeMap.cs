@@ -100,8 +100,8 @@ namespace DotNetGameFramework
                 return default(T);
             }
 
-            lock (head)
-            {
+            //lock (head)
+            //{
                 var curr = head;
                 for (; ; )
                 {
@@ -117,7 +117,7 @@ namespace DotNetGameFramework
                     }
                     curr = next;
                 }
-            }
+            //}
         }
 
         /// <inheritdoc/>

@@ -67,12 +67,5 @@ namespace DotNetGameFramework
             return _awaitableEventArgs;
         }
 
-        /// <summary>
-        /// 获取UserToken
-        /// </summary>
-        /// <returns></returns>
-        public object UserToken => _awaitableEventArgs.UserToken;
-
-
     }
 }

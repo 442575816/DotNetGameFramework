@@ -53,8 +53,7 @@ namespace DotNetGameFramework
             byte[] expandCommandBytes = new byte[32];
             Array.Copy(commandBytes, expandCommandBytes, commandBytes.Length);
 
-            ByteBuf buff = new ByteBuf();
-            buff.Retain();
+            ByteBuf buff = WrapperUtil.ByteBufPool.Allocate();
             buff.WriteInt(36 + bytes.Length);
             buff.WriteBytes(expandCommandBytes);
             buff.WriteInt(0);

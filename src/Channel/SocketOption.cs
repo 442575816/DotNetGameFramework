@@ -21,7 +21,7 @@ namespace DotNetGameFramework
         /// <summary>
         /// 等待连接的队列长度
         /// </summary>
-        public int Backlog { get; set; } = 512;
+        public int Backlog { get; set; } = 5000;
 
         /// <summary>
         /// 不启用Nagle算法，立即发送数据

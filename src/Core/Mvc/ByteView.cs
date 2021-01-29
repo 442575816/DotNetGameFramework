@@ -31,7 +31,6 @@ namespace DotNetGameFramework
 
 
                 ByteBuf buff = WrapperUtil.ByteBufPool.Allocate();
-                buff.Retain();
                 buff.WriteInt(36 + bodyBytes.Length);
                 buff.WriteBytes(array);
                 buff.WriteInt(0);

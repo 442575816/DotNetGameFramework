@@ -79,17 +79,30 @@ namespace DotNetGameFramework
         /// </summary>
         public IDuplexPipe TransportToApplication { get; }
 
-
+        /// <summary>
+        /// Socket读取到应用层的Pipeline
+        /// </summary>
         public PipeWriter Input => TransportToApplication.Output;
 
+        /// <summary>
+        /// 读取需要写入到Socket的Pipeline
+        /// </summary>
         public PipeReader Output => TransportToApplication.Input;
+
+        // 正在处理的任务
+        private Task _processingTask;
+
+
+        private volatile bool _socketDisposed;
+        private readonly object _shutdownLock = new object();
 
 
         /// <summary>
         /// 构造函数
         /// </summary>
         /// <param name="socketServer"></param>
-        public SocketServerChannel(Socket socket, SocketServer socketServer,
+        public SocketServerChannel(Socket socket,
+                                   SocketServer socketServer,
                                    MemoryPool<byte> memoryPool,
                                    PipeScheduler transportScheduler,
                                    bool useInlineSchedulers = false,
@@ -129,6 +142,8 @@ namespace DotNetGameFramework
 
 
             IsConnected = true;
+
+            //Console.WriteLine($"{Id} create");
         }
 
         /// <summary>
@@ -136,7 +151,7 @@ namespace DotNetGameFramework
         /// </summary>
         public void Start()
         {
-            _ = StartAsync();
+            _processingTask = StartAsync();
         }
 
        
@@ -150,18 +165,21 @@ namespace DotNetGameFramework
             {
                 var recvTask = DoReceive();
                 var sendTask = DoSend();
-                var recvToAppTask = DoAppDataReadAsync();
+                var recvToAppTask = DoAppDataReceive();
                 await recvTask;
                 await sendTask;
                 await recvToAppTask;
 
                 _socketReceiver.Dispose();
                 _socketSender.Dispose();
+
+                //Console.WriteLine($"{Id} closed");
             } catch (Exception e)
             {
                 ChannelPipeline.FireExceptionCaught(new Exception($"Unexpceted exception in {Id}", e));
             }
         }
+
 
         #region socket接受数据
         /// <summary>
@@ -197,11 +215,13 @@ namespace DotNetGameFramework
             }
             finally
             {
-                Input.Complete(error);
+                //Console.WriteLine($"{Id} read finish");
 
                 // If Shutdown() has already bee called, assume that was the reason ProcessReceives() exited.
-                ChannelPipeline.FireExceptionCaught(error);
-                Shutdown();
+                Input.Complete(error);
+
+                // 触发链接关闭
+                Close();
             }
 
         }
@@ -254,39 +274,30 @@ namespace DotNetGameFramework
         /// <param name="buf"></param>
         public void SendAsync(ByteBuf buf)
         {
-            if (!IsConnected)
+            try
             {
-                return;
-            }
+                if (!IsConnected)
+                {
+                    return;
+                }
 
-            if (buf.ReadableBytes == 0)
+                if (buf.ReadableBytes == 0)
+                {
+                    return;
+                }
+
+                var output = ApplicationToTransport.Output;
+                var buff = output.GetMemory(MinAllocBufferSize);
+
+                // FIXME 是否不是拷贝，会在没发送之前被改写
+                buf.Data.AsMemory<byte>().Slice(buf.ReaderIndex, buf.ReadableBytes).CopyTo(buff);
+                output.Advance(buf.ReadableBytes);
+                output.FlushAsync();
+            }
+            finally
             {
-                return;
+                buf.Release();
             }
-
-            var output = ApplicationToTransport.Output;
-            //var size = buf.ReadableBytes;
-            //var index = size;
-
-            //do
-            //{
-            //    var buff = output.GetMemory(MinAllocBufferSize);
-            //    var span = buff.Span;
-            //    var end = Math.Min(size, span.Length);
-            //    for (int i = 0; i < end; i++)
-            //    {
-            //        span[i] = buf.ReadByte();
-            //    }
-            //    index -= end;
-            //} while (index > 0);
-            //output.Advance(size);
-
-            var buff = output.GetMemory(MinAllocBufferSize);
-            buf.Data.AsMemory<byte>().Slice(buf.ReaderIndex, buf.ReadableBytes).CopyTo(buff);
-            output.Advance(buf.ReadableBytes);
-            output.FlushAsync();
-            buf.Release();
-            //sendQueue.Enqueue(buf);
         }
 
         /// <summary>
@@ -318,11 +329,14 @@ namespace DotNetGameFramework
             }
             finally
             {
-                // If Shutdown() has already bee called, assume that was the reason ProcessReceives() exited.
-                ChannelPipeline.FireExceptionCaught(error);
+                //Console.WriteLine($"{Id} send finish");
+
                 Shutdown();
 
+                // Complete the output after disposing the socket
                 Output.Complete(error);
+
+                // Cancel any pending flushes so that the input loop is un-paused
                 Input.CancelPendingFlush();
             }
         }
@@ -366,12 +380,36 @@ namespace DotNetGameFramework
         #endregion
 
         #region socket接受到的数据发送给应用层
+        /// <summary>
+        /// 处理消息发送
+        /// </summary>
+        /// <returns></returns>
+        private async Task DoAppDataReceive()
+        {
+            Exception error = null;
+
+            try
+            {
+                await ProcessAppDataReceives();
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+            finally
+            {
+                //Console.WriteLine($"{Id} app data read finish");
+
+                // 结束流
+                ApplicationToTransport.Input.Complete(error);
+            }
+        }
 
         /// <summary>
         /// 接收数据到应用层
         /// </summary>
         /// <returns></returns>
-        public async Task DoAppDataReadAsync()
+        public async Task ProcessAppDataReceives()
         {
             var input = ApplicationToTransport.Input;
             while (true)
@@ -417,47 +455,73 @@ namespace DotNetGameFramework
         /// </summary>
         public void Close()
         {
-            TransportToApplication.Input.Complete();
-            TransportToApplication.Output.Complete();
+            // 关闭流
             ApplicationToTransport.Input.Complete();
             ApplicationToTransport.Output.Complete();
-
         }
 
 
         /// <summary>
         /// 断开连接
         /// </summary>
-        public bool Shutdown()
+        public void Shutdown()
         {
-            if (!IsConnected)
+            if (_socketDisposed)
             {
-                return false;
+                return;
             }
 
-            IsConnected = false;
+            //Console.WriteLine($"{Id} shutdown");
 
-            try
+            lock (_shutdownLock)
             {
+                if (_socketDisposed)
+                {
+                    return;
+                }
+
+               
+
+                // Make sure to close the connection only after the _aborted flag is set.
+                // Without this, the RequestsCanBeAbortedMidRead test will sometimes fail when
+                // a BadHttpRequestException is thrown instead of a TaskCanceledException.
+                _socketDisposed = true;
+                IsConnected = false;
+
+                // 关闭流
+                TransportToApplication.Output.CancelPendingFlush();
+                TransportToApplication.Output.Complete();
+                
+
+                ApplicationToTransport.Output.CancelPendingFlush();
+                ApplicationToTransport.Output.Complete();
+
+                TransportToApplication.Input.Complete();
+                ApplicationToTransport.Input.Complete();
+                
+
                 try
                 {
+                    // Try to gracefully close the socket even for aborts to match libuv behavior.
                     Socket.Shutdown(SocketShutdown.Both);
                 }
-                catch (SocketException) { }
+                catch
+                {
+                    // Ignore any errors from Socket.Shutdown() since we're tearing down the connection anyway.
+                }
 
-                Socket.Close();
+                try
+                {
+                    Socket.Dispose();
+                } catch
+                {
+                    // Ignore any errors from Socket.Dispose() since we're tearing down the connection anyway.
+                }
 
-                _socketReceiver.Dispose();
-                _socketSender.Dispose();
+                ChannelPipeline.FireChannelInactive();
+                SocketServer.UnregisteredChannel(this);
+                ChannelPipeline.FireChannelUnregistered();
             }
-            catch (ObjectDisposedException) { }
-
-
-            ChannelPipeline.FireChannelInactive();
-            SocketServer.UnregisteredChannel(this);
-            ChannelPipeline.FireChannelUnregistered();
-
-            return true;
         }
 
         /// <summary>

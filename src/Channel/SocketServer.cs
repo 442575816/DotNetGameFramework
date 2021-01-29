@@ -115,33 +115,40 @@ namespace DotNetGameFramework
 
         public void AcceptAsync()
         {
-            //Console.WriteLine("Main thread: {0}", Thread.CurrentThread.ManagedThreadId);
-            AcceptInternalAsync();
+            // 启动一个专门线程用于接收socket链接
+            ThreadPool.UnsafeQueueUserWorkItem((obj) =>
+            {
+                _ = AcceptInternalAsync();
+            }, false);
         }
 
-        private async void AcceptInternalAsync()
+        private async Task AcceptInternalAsync()
         {
             while (true)
             {
                 try
                 {
-                    //Console.WriteLine("Accept thread1: {0}", Thread.CurrentThread.ManagedThreadId);
                     var acceptSocket = await serverSocket.AcceptAsync();
-                    //Console.WriteLine("Accept thread2: {0}", Thread.CurrentThread.ManagedThreadId);
+
                     // Only apply no delay to Tcp based endpoints
                     if (acceptSocket.LocalEndPoint is IPEndPoint)
                     {
                         acceptSocket.NoDelay = SocketOptions.NoDelay;
                     }
 
-                    var connection = new SocketServerChannel(acceptSocket, this, SocketOptions.MemoryPool,
-                                                             _schedulers[_schedulerIndex],
-                                                             SocketOptions.WaitForDataBeforeAllocatingBuffer);
+                    var index = _schedulerIndex;
 
-                    //Console.WriteLine("Accept thread3: {0}", Thread.CurrentThread.ManagedThreadId);
-                    ChannelConnected(connection);
-                    connection.Start();
-                    //Console.WriteLine("Accept thread4: {0}", Thread.CurrentThread.ManagedThreadId);
+                    // 加快链接效率
+                    _ = Task.Run(() =>
+                      {
+                          var connection = new SocketServerChannel(acceptSocket, this, SocketOptions.MemoryPool,
+                                                               _schedulers[index],
+                                                               SocketOptions.WaitForDataBeforeAllocatingBuffer);
+
+                          ChannelConnected(connection);
+                          connection.Start();
+                      });
+
 
                     _schedulerIndex = (_schedulerIndex + 1) % _numSchedulers;
                 }

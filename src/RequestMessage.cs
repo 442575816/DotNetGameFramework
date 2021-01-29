@@ -2,7 +2,7 @@
 
 namespace DotNetGameFramework
 {
-    public struct RequestMessage
+    public class RequestMessage
     {
         /// <summary>
         /// 请求Id

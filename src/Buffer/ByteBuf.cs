@@ -71,6 +71,7 @@ namespace DotNetGameFramework
             WriterIndex = 0;
             Capacity = capacity;
             MaxCapacity = maxCapacity;
+            ReferenceCount = 1;
         }
 
 
